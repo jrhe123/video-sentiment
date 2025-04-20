@@ -1,5 +1,6 @@
 import os
 import cv2
+import torch
 import pandas as pd
 import numpy as np
 
@@ -33,12 +34,12 @@ class MELDDataset(Dataset):
     def __getitem__(self, idx):
         row = self.data.iloc[idx]
         video_filename = f"""dia{row['Dialogue_ID']}_utt{row['Utterance_ID']}.mp4"""
-        path = os.path.join(self.video_dir, video_filename)
+        video_path = os.path.join(self.video_dir, video_filename)
 
-        video_path = os.path.exists(path)
-        if not video_path:
-            print(f"Video {path} not found")
-            raise FileNotFoundError(f"Video {path} not found")
+        video_path_exists = os.path.exists(video_path)
+        if not video_path_exists:
+            print(f"Video {video_path} not found")
+            raise FileNotFoundError(f"Video {video_path} not found")
         
         # Tokenize text
         text_inputs = self.tokenizer(
@@ -68,7 +69,7 @@ class MELDDataset(Dataset):
             # Reset cap to first frame
             cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-            while (len) < 30 and cap.isOpened():
+            while len(frames) < 30 and cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
                     break
@@ -87,7 +88,17 @@ class MELDDataset(Dataset):
         
         # Pad or truncate frames
         if len(frames) < 30:
+            frames = [
+                np.zeros_like(
+                    frames[0]
+                )
+            ] * (30 - len(frames))
+        else:
+            frames = frames[:30]
 
+        # before permute: [frames, height, width, channels]
+        # after permute: [frames, channels, height, width]
+        return torch.FloatTensor(np.array(frames)).permute(0, 3, 1, 2)
 
 
 
@@ -96,3 +107,5 @@ if __name__ == '__main__':
         csv_path='../dataset/dev/dev_sent_emo.csv',
         video_dir='../dataset/dev/dev_splits_complete',
     )
+    # get item
+    print(meld[0])
