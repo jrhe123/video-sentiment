@@ -1,6 +1,8 @@
 import os
 import cv2
 import torch
+import torchaudio
+import subprocess
 import pandas as pd
 import numpy as np
 
@@ -51,7 +53,62 @@ class MELDDataset(Dataset):
         )
 
         # Video frames
-        video_frames = self._load_video_frames(video_path)
+        # video_frames = self._load_video_frames(video_path)
+
+        # Audio
+        audio_features = self._extract_audio_features(video_path)
+
+    def _extract_audio_features(self, video_path):
+        audio_path = video_path.replace('.mp4', '.wav')
+        try:
+            subprocess.run(
+                [
+                    'ffmpeg', 
+                    '-i', video_path, 
+                    '-vn', 
+                    '-acodec', 'pcm_s16le', 
+                    '-ar', '16000',
+                    '-ac', '1',
+                    audio_path,
+                ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+
+            waveform, sample_rate = torchaudio.load(audio_path)
+
+            # common speech rate is 16000
+            if sample_rate != 16000:
+                resampler = torchaudio.transforms.Resample(sample_rate, 16000)
+                waveform = resampler(waveform)
+
+            mel_spectrogram = torchaudio.transforms.MelSpectrogram(
+                sample_rate=16000,
+                n_mels=64,
+                n_fft=1024,
+                hop_length=512,
+            )
+            mel_spec = mel_spectrogram(waveform)
+
+            # fix the input size to 300
+            # channel, frequency bin, timestamp
+            if mel_spec.size(2) < 300:
+                padding = 300 - mel_spec.size(2)
+                mel_spec = torch.nn.functional.pad(mel_spec, (0, padding))
+            else:
+                mel_spec = mel_spec[:, :, :300]
+
+
+            # Normalize
+            mel_spec = (mel_spec - mel_spec.mean()) / mel_spec.std()
+
+        except subprocess.CalledProcessError as e:
+            raise ValueError(f"Error extracting audio features from video {video_path}: {e}")
+
+        except Exception as e:
+            raise ValueError(f"Error extracting audio features from video {video_path}: {e}")
+        
+        finally:
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
 
     def _load_video_frames(self, video_path):
         cap = cv2.VideoCapture(video_path)

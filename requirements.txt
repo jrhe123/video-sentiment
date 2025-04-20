@@ -4,3 +4,4 @@ torchaudio
 transformers
 pandas
 opencv-python
+soundfile
