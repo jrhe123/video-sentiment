@@ -3,6 +3,8 @@
 - MELD: Multimodal EmotionLines Dataset
     - https://affective-meld.github.io/
     - curl -O https://web.eecs.umich.edu/~mihalcea/downloads/MELD.Raw.tar.gz
+    - tar -xzvf MELD.Raw.tar.gz
+    - cd MELD.Raw && tar -xzvf dev.tar.gz && tar -xzvf test.tar.gz && tar -xzvf train.tar.gz
 
 ## Architecture
 1. Video encoder: ResNet3D 18 layer
@@ -35,7 +37,7 @@ modality 2 -> feature extraction -> ml model 2
 ```
 Video encoder (ResNet3D 18 layer) [batch_size, 128]
 
-Text encoder (BERT) [batch_size, 128]
+Text encoder (BERT) [batch_size, 128]               -> concatenate data [batch_size, 384] -> fusion [learn relation between modalities] -> emotion classifer [batch_size, 7] (e.g., 7 emotions joy/sadness/etc..) & sentiment classifier [batch_size, 3] (e.g., positive/negative/neutral)
 
 Audio encoder (Raw spectrogram) [batch_size, 128]
 
