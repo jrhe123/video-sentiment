@@ -53,3 +53,11 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
 2. Feature Video: find video in folder -> extact frames -> normalize RGB values -> one tensor with all frames -> return dict (normalize RGB values to 0~1)
 3. Feature Audio: -> .mp4 to .wav -> extract audio from video -> create mel spectrogram -> normalize mel spectrogram -> return dict
 4. Label: load label from row 0 -> map emotion and sentiment to numbers -> return dict
+
+{
+    "text": xyz,
+    "video_frames": xyz,
+    "audio_features": xyz,",
+    "emotion_label": "sadness",
+    "sentiment_label": "negative"
+}
