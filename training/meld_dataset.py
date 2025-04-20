@@ -6,7 +6,7 @@ import subprocess
 import pandas as pd
 import numpy as np
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer
 
 class MELDDataset(Dataset):
@@ -168,7 +168,7 @@ class MELDDataset(Dataset):
         
         # Pad or truncate frames
         if len(frames) < 30:
-            frames = [
+            frames += [
                 np.zeros_like(
                     frames[0]
                 )
@@ -181,11 +181,73 @@ class MELDDataset(Dataset):
         return torch.FloatTensor(np.array(frames)).permute(0, 3, 1, 2)
 
 
+def collate_fn(batch):
+    # Filter out None items
+    batch = list(filter(None, batch))
+    return torch.utils.data.dataloader.default_collate(batch)
+
+def prepare_dataloaders(train_csv, train_video_dir,
+                        dev_csv, dev_video_dir,
+                        test_csv, test_video_dir,
+                        batch_size=32):
+    
+    # Datasets
+    train_dataset = MELDDataset(
+        csv_path=train_csv,
+        video_dir=train_video_dir,
+    )
+    dev_dataset = MELDDataset(
+        csv_path=dev_csv,
+        video_dir=dev_video_dir,
+    )
+    test_dataset = MELDDataset(
+        csv_path=test_csv,
+        video_dir=test_video_dir,
+    )
+
+    # DataLoaders
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        collate_fn=collate_fn,
+    )
+    dev_loader = DataLoader(
+        dev_dataset,
+        batch_size=batch_size,
+        collate_fn=collate_fn,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        collate_fn=collate_fn,
+    )
+    return train_loader, dev_loader, test_loader
+
 
 if __name__ == '__main__':
-    meld = MELDDataset(
-        csv_path='../dataset/dev/dev_sent_emo.csv',
-        video_dir='../dataset/dev/dev_splits_complete',
-    )
+    # meld = MELDDataset(
+    #     csv_path='../dataset/dev/dev_sent_emo.csv',
+    #     video_dir='../dataset/dev/dev_splits_complete',
+    # )
     # get item
-    print(meld[0])
+    # print(meld[0])
+
+    train_loader, dev_loader, test_loader = prepare_dataloaders(
+        train_csv='../dataset/train/train_sent_emo.csv',
+        train_video_dir='../dataset/train/train_splits',
+
+        dev_csv='../dataset/dev/dev_sent_emo.csv',
+        dev_video_dir='../dataset/dev/dev_splits_complete',
+
+        test_csv='../dataset/test/test_sent_emo.csv',
+        test_video_dir='../dataset/test/output_repeated_splits_test',
+    )
+
+    for batch in train_loader:
+        print(batch["text_inputs"])
+        print(batch["video_frames"].shape)
+        print(batch["audio_features"].shape)
+        print(batch["emotion_label"])
+        print(batch["sentiment_label"])
+        break
