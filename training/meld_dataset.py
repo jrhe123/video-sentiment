@@ -34,29 +34,51 @@ class MELDDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, idx):
-        row = self.data.iloc[idx]
-        video_filename = f"""dia{row['Dialogue_ID']}_utt{row['Utterance_ID']}.mp4"""
-        video_path = os.path.join(self.video_dir, video_filename)
+        if isinstance(idx, torch.Tensor):
+            idx = idx.item()
 
-        video_path_exists = os.path.exists(video_path)
-        if not video_path_exists:
-            print(f"Video {video_path} not found")
-            raise FileNotFoundError(f"Video {video_path} not found")
-        
-        # Tokenize text
-        text_inputs = self.tokenizer(
-            row['Utterance'],
-            padding='max_length',
-            truncation=True,
-            max_length=128,
-            return_tensors='pt',
-        )
+        try:
+            row = self.data.iloc[idx]
+            video_filename = f"""dia{row['Dialogue_ID']}_utt{row['Utterance_ID']}.mp4"""
+            video_path = os.path.join(self.video_dir, video_filename)
 
-        # Video frames
-        # video_frames = self._load_video_frames(video_path)
+            video_path_exists = os.path.exists(video_path)
+            if not video_path_exists:
+                print(f"Video {video_path} not found")
+                raise FileNotFoundError(f"Video {video_path} not found")
+            
+            # Tokenize text
+            text_inputs = self.tokenizer(
+                row['Utterance'],
+                padding='max_length',
+                truncation=True,
+                max_length=128,
+                return_tensors='pt',
+            )
 
-        # Audio
-        audio_features = self._extract_audio_features(video_path)
+            # Video frames
+            video_frames = self._load_video_frames(video_path)
+
+            # Audio
+            audio_features = self._extract_audio_features(video_path)
+
+            # emotion & sentiment
+            emotion_label = self.emotion_map[row['Emotion'].lower()]
+            sentiment_label = self.sentiment_map[row['Sentiment'].lower()]
+
+            return {
+                "text_inputs": {
+                    "input_ids": text_inputs["input_ids"].squeeze(),
+                    "attention_mask": text_inputs["attention_mask"].squeeze(),
+                },
+                "video_frames": video_frames,
+                "audio_features": audio_features,
+                "emotion_label": torch.tensor(emotion_label),
+                "sentiment_label": torch.tensor(sentiment_label),
+            }
+        except Exception as e:
+            print(f"Error loading item {idx}: {e}")
+            return None
 
     def _extract_audio_features(self, video_path):
         audio_path = video_path.replace('.mp4', '.wav')
@@ -88,6 +110,9 @@ class MELDDataset(Dataset):
             )
             mel_spec = mel_spectrogram(waveform)
 
+            # Normalize
+            mel_spec = (mel_spec - mel_spec.mean()) / mel_spec.std()
+
             # fix the input size to 300
             # channel, frequency bin, timestamp
             if mel_spec.size(2) < 300:
@@ -96,9 +121,7 @@ class MELDDataset(Dataset):
             else:
                 mel_spec = mel_spec[:, :, :300]
 
-
-            # Normalize
-            mel_spec = (mel_spec - mel_spec.mean()) / mel_spec.std()
+            return mel_spec
 
         except subprocess.CalledProcessError as e:
             raise ValueError(f"Error extracting audio features from video {video_path}: {e}")
