@@ -5,6 +5,7 @@
     - curl -O https://web.eecs.umich.edu/~mihalcea/downloads/MELD.Raw.tar.gz
     - tar -xzvf MELD.Raw.tar.gz
     - cd MELD.Raw && tar -xzvf dev.tar.gz && tar -xzvf test.tar.gz && tar -xzvf train.tar.gz
+    - mv MELD.Raw dataset
 
 ## Architecture
 1. Video encoder: ResNet3D 18 layer
@@ -42,3 +43,13 @@ Text encoder (BERT) [batch_size, 128]               -> concatenate data [batch_s
 Audio encoder (Raw spectrogram) [batch_size, 128]
 
 ```
+
+## Mel spectrogram
+- 梅尔倒频谱
+
+## Dataset
+
+1. Feature Text: load text from row -> tokenize utterance -> return dict
+2. Feature Video: find video in folder -> extact frames -> normalize RGB values -> one tensor with all frames -> return dict (normalize RGB values to 0~1)
+3. Feature Audio: -> .mp4 to .wav -> extract audio from video -> create mel spectrogram -> normalize mel spectrogram -> return dict
+4. Label: load label from row 0 -> map emotion and sentiment to numbers -> return dict
