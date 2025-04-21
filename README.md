@@ -64,3 +64,9 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
 
 ## Fusion
 - Dimension: 128
+
+## Test models
+- python3 -m training.models
+
+## Test logger
+- python3 -m training.test_logging

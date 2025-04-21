@@ -194,7 +194,7 @@ class MultimodalTrainer:
         # scheduler
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, 
-            model="min", 
+            mode="min", 
             factor=0.1, 
             patience=2, # every 2 epochs
         )
