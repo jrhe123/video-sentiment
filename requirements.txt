@@ -8,3 +8,4 @@ soundfile
 scikit-metrics
 tensorboard
 tqdm
+sagemaker

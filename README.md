@@ -75,3 +75,5 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
 
 ## Count model parameters
 - python3 -m training.count_parameters
+
+## SageMaker
