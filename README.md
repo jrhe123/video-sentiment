@@ -143,6 +143,9 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
 
 ## AWS cli
 - aws configure
+- start the training job
+    - python3 train_sagemaker.py
+    - check the logs in cloudwatch
 
 
 ## References
