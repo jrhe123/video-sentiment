@@ -61,3 +61,6 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
     "emotion_label": "sadness",
     "sentiment_label": "negative"
 }
+
+## Fusion
+- Dimension: 128

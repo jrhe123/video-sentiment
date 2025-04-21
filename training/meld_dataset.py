@@ -9,6 +9,8 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 class MELDDataset(Dataset):
     def __init__(self, csv_path, video_dir): 
         self.data = pd.read_csv(csv_path)
@@ -114,7 +116,7 @@ class MELDDataset(Dataset):
             mel_spec = (mel_spec - mel_spec.mean()) / mel_spec.std()
 
             # fix the input size to 300
-            # channel, frequency bin, timestamp
+            # channel, frequency bin, time_step
             if mel_spec.size(2) < 300:
                 padding = 300 - mel_spec.size(2)
                 mel_spec = torch.nn.functional.pad(mel_spec, (0, padding))
