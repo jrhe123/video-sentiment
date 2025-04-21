@@ -77,3 +77,74 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
 - python3 -m training.count_parameters
 
 ## SageMaker
+- EC2:
+    - download dataset to S3
+- S3:
+    - datasets
+    - tensorboard runs & download back to local machine
+    - setup CORS for allowed origins
+- SageMaker:
+    - training jobs: instance type `ml.g5.xlarge`
+    - run endpoint -> inference
+- IAM:
+    - roles to access S3 / SageMaker deploy & invoke endpoint
+
+## AWS console
+1. SageMaker
+- request quota
+    - ml.g5.xlarge for training job usage -> increase quota value to 1
+    - ml.g5.xlarge for endpoint usage -> increase quota value to 1
+
+2. S3 bucket
+- create bucket
+    - general purpose
+    - public access
+- create folders
+    - dataset/
+    - tensorboard/
+- edit bucket's permission
+    - CORS
+    ```
+    [
+        {
+            "AllowedHeaders": ["*"],
+            "AllowedMethods": ["GET", "PUT", "POST"],
+            "AllowedOrigins": ["*"],
+            "ExposeHeaders": []
+        }
+    ]
+    ```
+
+3. IAM
+- create role
+    - search -> sagemaker -> `AmazonSageMakerFullAccess`
+    - name `sentiment-analysis-execution-role`
+    - copy the ARN `arn:aws:s3:::sentiment-analysis-saas`
+- create inline policy
+    - get object
+    - delete object
+    - put object
+    - list bucket
+    - specify bucket with above ARN
+    - apply to ANY object
+    - create policy `sentiment-analysis-execution-s3-policy`
+
+- create role
+    - search -> sagemaker -> `AmazonSageMakerFullAccess`
+    - name `sentiment-analysis-deploy-endpoint-role`
+- attach policy
+    - `cloudWatchLogsFullAccess`
+- create inline policy
+    - same as above, so we can copy & paste it as JSON
+
+- create policy
+    - name `sentiment-analysis-deploy-endpoint-s3-policy`
+
+
+## AWS cli
+- aws configure
+
+
+## References
+- https://www.youtube.com/watch?v=Myo5kizoSk0
+- https://github.com/Andreaswt/ai-video-sentiment-model/tree/main
