@@ -1,9 +1,12 @@
+import os
 import torch
 import torch.nn as nn
 
 from transformers import BertModel
 from torchvision import models as vision_models
 from sklearn.metrics import precision_score, accuracy_score
+from torch.utils.tensorboard import SummaryWriter
+from datetime import datetime
 
 from training.meld_dataset import MELDDataset
 
@@ -167,6 +170,14 @@ class MultimodalTrainer:
         print(f'Validation set size: {val_size}')
         print(f"Batches per epoch: {len(train_loader):,}")
 
+        # tensorboard
+        timestamp = datetime.now().strftime("%b%d_%H-%M-%S") # Dec17_14_22_35
+        base_dir = '/opt/ml/output/tensorboard' if 'SM_MODEL_DIR' in os.environ else 'runs'
+        log_dir = f"{base_dir}/run_{timestamp}"
+        self.writer = SummaryWriter(log_dir=log_dir)
+        self.global_step = 0
+        self.current_train_losses = None
+
         # optimizer
         self.optimizer = torch.optim.Adam(
             [
@@ -195,6 +206,53 @@ class MultimodalTrainer:
         self.sentiment_criterion = nn.CrossEntropyLoss(
             label_smoothing=0.05
         )
+
+    def log_metrics(self, losses, metrics=None, phase='train'):
+        if phase == 'train':
+            self.current_train_losses = losses
+        else: # validation phase
+            self.writer.add_scalar(
+                'loss/total/train', 
+                self.current_train_losses['total'], 
+                self.global_step,
+            )
+            self.writer.add_scalar(
+                'loss/total/val', 
+                losses['total'], 
+                self.global_step,
+            )
+            # 
+            self.writer.add_scalar(
+                'loss/emotion/train', 
+                self.current_train_losses['emotion'], 
+                self.global_step,
+            )
+            self.writer.add_scalar(
+                'loss/emotion/val', 
+                losses['emotion'], 
+                self.global_step,
+            )
+            # 
+            self.writer.add_scalar(
+                'loss/sentiment/train', 
+                self.current_train_losses['sentiment'], 
+                self.global_step,
+            )
+            self.writer.add_scalar(
+                'loss/sentiment/val', 
+                losses['sentiment'], 
+                self.global_step,
+            )
+        
+        if metrics:
+            self.writer.add_scalar(
+                f'{phase}/emotion_precision', metrics['emotion_precision'], self.global_step)
+            self.writer.add_scalar(
+                f'{phase}/emotion_accuracy', metrics['emotion_accuracy'], self.global_step)
+            self.writer.add_scalar(
+                f'{phase}/sentiment_precision', metrics['sentiment_precision'], self.global_step)
+            self.writer.add_scalar(
+                f'{phase}/sentiment_accuracy', metrics['sentiment_accuracy'], self.global_step)
 
     def train_epoch(self):
         self.model.train()
@@ -247,11 +305,18 @@ class MultimodalTrainer:
             running_loss['emotion'] += emotion_loss.item()
             running_loss['sentiment'] += sentiment_loss.item()
 
+            self.log_metrics({
+                'total': total_loss.item(),
+                'emotion': emotion_loss.item(),
+                'sentiment': sentiment_loss.item()
+            })
+            self.global_step += 1
+
         return {
             k: v/len(self.train_loader) for k, v in running_loss.items()
         }
 
-    def evaluate(self, dataloader, phrase='val'):
+    def evaluate(self, dataloader, phase='val'):
         self.model.eval()
         losses = {
             'total': 0,
@@ -334,7 +399,14 @@ class MultimodalTrainer:
             all_sentiment_preds,
         )
 
-        if phrase == 'val':
+        self.log_metrics(avg_loss, {
+            'emotion_precision': emotion_precision,
+            'emotion_accuracy': emotion_accuracy,
+            'sentiment_precision': sentiment_precision,
+            'sentiment_accuracy': sentiment_accuracy
+        }, phase=phase)
+
+        if phase == 'val':
             self.scheduler.step(avg_loss['total'])
 
         return avg_loss, {
