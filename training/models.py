@@ -4,6 +4,8 @@ import torch.nn as nn
 from transformers import BertModel
 from torchvision import models as vision_models
 
+from training.meld_dataset import MELDDataset
+
 class TextEncoder(nn.Module):
     def __init__(self):
         super().__init__()
@@ -50,7 +52,7 @@ class VideoEncoder(nn.Module):
 
     def forward(self, x):
         # [batch_size, frames, channels, height, width] -> [batch_size, channels, frames, height, width]
-        x = self.backbone(x)
+        x = x.transpose(1, 2)
 
         return self.backbone(x)
 
@@ -66,7 +68,7 @@ class AudioEncoder(nn.Module):
 
             # Higher level features
             nn.Conv1d(64, 128, kernel_size=3),
-            nn.BatchNorm1d(64), # normalize the output of convolutional layer
+            nn.BatchNorm1d(128), # normalize the output of convolutional layer
             nn.ReLU(), # activation function
             nn.AdaptiveAvgPool1d(1), # reduce the data, smooth the feature
         )
@@ -124,10 +126,10 @@ class MultimodalSentimentModel(nn.Module):
             nn.Linear(64, 3),  # 3 sentiment output: negative, neutral, positive
         )
 
-    def forward(self, text_input, video_frames, audio_features):
+    def forward(self, text_inputs, video_frames, audio_features):
         text_feature = self.text_encoder(
-            text_input["input_ids"],
-            text_input["attention_mask"],
+            text_inputs["input_ids"],
+            text_inputs["attention_mask"],
         )
         video_feature = self.video_encoder(video_frames)
         audio_feature = self.audio_encoder(audio_features)
@@ -149,17 +151,65 @@ class MultimodalSentimentModel(nn.Module):
         }
 
 
+# cd video-sentiment && python3 -m training.models
 
 if __name__ == '__main__':
-    batch_size = 2
-    # 1: channel
-    # 64: frequency bin
-    # 300: time step
-    x = torch.randn(batch_size, 1, 64, 300)
-    print("input shape: ", x.shape)
-    # torch.Size([2, 1, 64, 300])
+    dataset = MELDDataset(
+        csv_path='dataset/train/train_sent_emo.csv',
+        video_dir='dataset/train/train_splits'
+    )
+    sample = dataset[0]
 
-    x_squeezed = x.squeeze(1)
-    print("output shape: ", x_squeezed.shape)
-    # torch.Size([2, 64, 300])
+    model = MultimodalSentimentModel()
+    model.eval()
+
+    text_inputs = {
+        'input_ids': sample['text_inputs']['input_ids'].unsqueeze(0),   #插入一个大小为 1 的维度
+        'attention_mask': sample['text_inputs']['attention_mask'].unsqueeze(0),
+    }
+    video_frames = sample['video_frames'].unsqueeze(0)
+    audio_features = sample['audio_features'].unsqueeze(0)
+
+    with torch.no_grad():
+        outputs = model(
+            text_inputs=text_inputs,
+            video_frames=video_frames,
+            audio_features=audio_features,
+        )
+        emotion_probs = torch.softmax(outputs['emotions'], dim=1)[0]
+        sentiment_probs = torch.softmax(outputs['sentiments'], dim=1)[0]
+
+    emotion_map = {
+        0: 'anger',
+        1: 'disgust',
+        2: 'fear',
+        3: 'joy',
+        4: 'neutral',
+        5: 'sadness',
+        6: 'surprise',
+    }
+    sentiment_map = {
+        0: 'negative',
+        1: 'neutral',
+        2: 'positive',
+    }
+    
+    for i, prob in enumerate(emotion_probs):
+        print(f'{emotion_map[i]}: {prob:.4f}')
+    
+    for i, prob in enumerate(sentiment_probs):
+        print(f'{sentiment_map[i]}: {prob:.4f}')
+
+# if __name__ == '__main__':
+#     batch_size = 2
+#     # 1: channel
+#     # 64: frequency bin
+#     # 300: time step
+#     x = torch.randn(batch_size, 1, 64, 300)
+#     print("input shape: ", x.shape)
+#     # torch.Size([2, 1, 64, 300])
+
+#     x_squeezed = x.squeeze(1)
+#     print("output shape: ", x_squeezed.shape)
+#     # torch.Size([2, 64, 300])
 
