@@ -5,3 +5,4 @@ transformers
 pandas
 opencv-python
 soundfile
+scikit-metrics
