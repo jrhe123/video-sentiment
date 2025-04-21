@@ -70,3 +70,5 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
 
 ## Test logger
 - python3 -m training.test_logging
+- tensorboard --logdir runs
+- http://localhost:6006/

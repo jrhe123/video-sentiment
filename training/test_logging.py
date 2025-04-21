@@ -1,5 +1,6 @@
-from collections import namedtuple
 import torch
+
+from collections import namedtuple
 from torch.utils.data import DataLoader
 from training.models import MultimodalSentimentModel, MultimodalTrainer
 
