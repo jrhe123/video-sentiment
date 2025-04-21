@@ -7,3 +7,4 @@ opencv-python
 soundfile
 scikit-metrics
 tensorboard
+tqdm
