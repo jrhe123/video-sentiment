@@ -72,3 +72,6 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
 - python3 -m training.test_logging
 - tensorboard --logdir runs
 - http://localhost:6006/
+
+## Count model parameters
+- python3 -m training.count_parameters
