@@ -146,8 +146,15 @@ Audio encoder (Raw spectrogram) [batch_size, 128]
 - start the training job
     - python3 train_sagemaker.py
     - check the logs in cloudwatch
+- download the model
+    - aws s3 cp s3://sentiment-analysis-saas/tensorboard/runs/2022-04-04_09-08-07/events.out.tfevents.1649168487.ip-172-31-13-250.ec2.internal.tar.gz .
+- sync tensorboard logs to local folder
+    - aws s3 sync s3://sentiment-analysis-saas/tensorboard/ ./tensorboard_logs
+    - tensorboard --logdir tensorboard_logs
 
 
 ## References
 - https://www.youtube.com/watch?v=Myo5kizoSk0
-- https://github.com/Andreaswt/ai-video-sentiment-model/tree/main
+- BE: https://github.com/Andreaswt/ai-video-sentiment-model/tree/main
+- FE: https://github.com/Andreaswt/ai-video-sentiment-saas
+- Pre-trained models: https://drive.google.com/drive/folders/1f5tOlIixDUeYtzzIdctQRb_-qllzAMQd
